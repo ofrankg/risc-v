@@ -24,7 +24,7 @@ typedef enum bit [2:0] {
     aand = 3'b111
 } arith_funct3_t;
 
-typedef enum bit [4:0] {
+typedef enum bit [3:0] {
     alu_add  = 4'b0000,
     alu_sub  = 4'b0001,
     alu_sll  = 4'b0010,
