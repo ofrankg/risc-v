@@ -3,5 +3,7 @@
 /output_files
 riscv_core.qpf
 riscv_core.qsf
+riscv_core.qws
 riscv_core_nativelink_simulation.rpt
 /simulation
+*.bak
