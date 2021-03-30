@@ -1,3 +1,4 @@
+import riscv_types::*;
 module MEM
   #(
     parameter  WIDTH = 32,
@@ -7,9 +8,22 @@ module MEM
     input logic                  clk_in,
     input                        we_in,
     input                        re_in,
+    input                        zero_in,
+    input riscv_control_t        ctrl_vector_in,
     input logic  [WIDTH-1:0]     address_in,
     input logic  [WIDTH-1:0]     data_in,
+    output logic                 pc_src_out,
     output logic [WIDTH-1:0]     data_out
+  );
+
+
+  /* Resolve Next PC */
+  select_branch select_branch
+  (
+    .zero_in    (zero_in),
+    .beq_in     (ctrl_vector_in.branch),
+    .bneq_in    (ctrl_vector_in.branch_neq),
+    .branch_out (pc_src_out)
   );
 
   dmem #(.WIDTH(32),.INDEX(INDEX)) dcache

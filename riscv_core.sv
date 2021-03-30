@@ -2,7 +2,8 @@
 import riscv_types::*;
 module riscv_core
  #(
-     parameter WIDTH=32
+     parameter WIDTH=32,
+     parameter INDEX=5
   )
   (
     input logic  				master_clk,
@@ -11,74 +12,178 @@ module riscv_core
     output logic [WIDTH-1:0]	pc_current
   );
 
-     riscv_control_t control_vector;
+     riscv_control_t ctrl_vector;
      logic [WIDTH-1:0]	signimm;
      logic [WIDTH-1:0]	alu_res;
      logic [WIDTH-1:0]	data_mem;
-     logic [WIDTH-1:0]	rs1;
-     logic [WIDTH-1:0]	rs2;
+     logic [WIDTH-1:0]	drs1;
+     logic [WIDTH-1:0]	drs2;
      logic [WIDTH-1:0]	data_to_write;
      logic [WIDTH-1:0]	pc_next;
      logic [WIDTH-1:0]	pc_plus4;
 
+     logic [WIDTH-1:0]	ifid_pc;
+     logic [WIDTH-1:0]	ifid_instr;
+
+     logic [INDEX-1:0]  rd;
+
+     logic [WIDTH-1:0]  idex_pc;
+	   logic [WIDTH-1:0]  idex_drs1;
+     logic [WIDTH-1:0]  idex_drs2;
+     logic [WIDTH-1:0]  idex_signimm;
+     riscv_control_t    idex_ctrl_vector;
+     logic [INDEX-1:0]  idex_rd;
+
+     logic [WIDTH-1:0]  pc_branch;
+     logic              zero;
+
+     logic              exmem_pc_src;
+     logic              exmem_zero;
+     logic [WIDTH-1:0]  exmem_pc_branch;
+     logic [WIDTH-1:0]  exmem_alu_res;
+     logic [INDEX-1:0]  exmem_rd;
+     logic [WIDTH-1:0]  exmem_drs2;
+
+     riscv_control_t    exmem_ctrl_vector;
+
+     logic              memwb_mem_to_reg;
+     logic              memwb_reg_write;
+     logic [INDEX-1:0]  memwb_rd;
+     logic [WIDTH-1:0]  memwb_data_mem;
+     logic [WIDTH-1:0]  memwb_alu_res;
 
     IF #(.WIDTH(32)) FETCH
     (
-      .clk_in         ( master_clk  ),
-      .rst_in         ( master_nrst ),
-      .pc_next_in     ( pc_next     ),
-      .pc_current_out ( pc_current  ),
-      .pc_plus4_out   ( pc_plus4    )
+      .clk_in         (master_clk),
+      .rst_in         (master_nrst),
+      .pc_src_in      (exmem_pc_src),
+      .pc_branch_in   (exmem_pc_branch),
+      .pc_current_out (pc_current)
     );
 
     imem #(.WIDTH(32),.INDEX(6)) ICACHE
     (
-      .clk_in     ( master_clk  ),
-      .data_in    ( ),
-      .address_in ( pc_current[7:2]  ),
-      .we_in      ( ),
-      .data_out   ( instruction )
+      .clk_in     (master_clk),
+      .data_in    (),
+      .address_in (pc_current[7:2]),
+      .we_in      (),
+      .data_out   (instruction)
+    );
+
+    IFID #(.WIDTH(32)) IFID
+    (
+      .clk_in     (master_clk),
+      .flush_in   (),
+      .rst_in     (master_nrst),
+      .pc_in      (pc_current),
+      .instr_in   (instruction),
+      .pc_out     (ifid_pc),
+      .instr_out  (ifid_instr)
     );
 
     ID #(.WIDTH(32),.INDEX(5)) DECODE
     (
-      .clk_in           ( master_clk      ),
-      .instr_in         ( instruction     ),
-      .data_in          ( data_to_write   ),
-      .rs1_alu_out      ( rs1             ),
-      .rs2_alu_out      ( rs2             ),
-      .signimm_out      ( signimm         ),
-      .ctrl_vector_out  ( control_vector  )
+      .clk_in           (master_clk),
+      .we_in            (memwb_reg_write),
+      .rd_in            (memwb_rd),
+      .instr_in         (ifid_instr),
+      .data_in          (data_to_write),
+      .rd_out           (rd),
+      .drs1_out         (drs1),
+      .drs2_out         (drs2),
+      .signimm_out      (signimm),
+      .ctrl_vector_out  (ctrl_vector)
     );
+
+    IDEX #(.WIDTH(32),.INDEX(5)) IDEX
+    (
+      .clk_in           (master_clk),
+      .rst_in           (master_nrst),
+      .pc_in            (ifid_pc),
+      .rs1_in           (),
+      .rs2_in           (),
+      .rd_in            (rd),
+      .drs1_in          (drs1),
+      .drs2_in          (drs2),
+      .signimm_in       (signimm),
+      .ctrl_vector_in   (ctrl_vector),
+      .pc_out           (idex_pc),
+      .rs1_out          (),
+      .rs2_out          (),
+      .rd_out           (idex_rd),
+      .drs1_out         (idex_drs1),
+      .drs2_out         (idex_drs2),
+      .signimm_out      (idex_signimm),
+      .ctrl_vector_out  (idex_ctrl_vector)
+    );
+
 
     EX #(.WIDTH(32),.INDEX(5)) EXECUTION
     (
-      .pc_in          ( pc_current      ),
-      .pc_plus4_in    ( pc_plus4        ),
-      .rs1_in         ( rs1             ),
-      .rs2_in         ( rs2             ),
-      .signimm_in     ( signimm         ),
-      .ctrl_vector_in ( control_vector  ),
-      .pc_next_out    ( pc_next         ),
-      .alu_res_out    ( alu_res         )
+      .pc_in          (idex_pc),
+      .rs1_in         (idex_drs1),
+      .rs2_in         (idex_drs2),
+      .signimm_in     (idex_signimm),
+      .ctrl_vector_in (idex_ctrl_vector),
+      .zero_out       (zero),
+      .pc_branch_out  (pc_branch),
+      .alu_res_out    (alu_res)
     );
 
-    MEM #(.WIDTH(32),.INDEX(5)) MEMORY
+    EXMEM #(.WIDTH(32),.INDEX(5)) EXMEM
     (
-      .clk_in         ( master_clk                  ),
-      .we_in          ( control_vector.mem_write    ),
-      .re_in          ( control_vector.mem_read     ),
-      .address_in     ( alu_res                     ),
-      .data_in        ( rs2                         ),
-      .data_out       ( data_mem                    )
+      .clk_in          (master_clk),
+      .rst_in          (master_nrst),
+      .pc_branch_in    (pc_branch),
+      .alu_res_in      (alu_res),
+      .zero_in         (zero),
+      .rd_in           (idex_rd),
+      .drs2_in         (idex_drs2),
+      .ctrl_vector_in  (idex_ctrl_vector),
+      .pc_branch_out   (exmem_pc_branch),
+      .alu_res_out     (exmem_alu_res),
+      .zero_out        (exmem_zero),
+      .rd_out          (exmem_rd),
+      .drs2_out        (exmem_drs2),
+      .ctrl_vector_out (exmem_ctrl_vector)
     );
+
+    MEM #(.WIDTH(32),.INDEX(6)) MEMORY
+    (
+      .clk_in         (master_clk),
+      .we_in          (exmem_ctrl_vector.mem_write),
+      .re_in          (exmem_ctrl_vector.mem_read),
+      .zero_in        (exmem_zero),
+      .ctrl_vector_in (exmem_ctrl_vector),
+      .address_in     (exmem_alu_res),
+      .data_in        (exmem_drs2),
+      .pc_src_out     (exmem_pc_src),
+      .data_out       (data_mem)
+    );
+
+    MEMWB #(.WIDTH(32),.INDEX(5)) MEMWB
+      (
+        .clk_in           (master_clk),
+        .rst_in           (master_nrst),
+        .mem_to_reg_in    (exmem_ctrl_vector.mem_to_reg),
+        .reg_write_in     (exmem_ctrl_vector.reg_write),
+        .rd_in            (exmem_rd),
+        .data_mem_in      (data_mem),
+        .alu_res_in       (exmem_alu_res),
+        .mem_to_reg_out   (memwb_mem_to_reg),
+        .reg_write_out    (memwb_reg_write),
+        .rd_out           (memwb_rd),
+        .data_mem_out     (memwb_data_mem),
+        .alu_res_out      (memwb_alu_res)
+      );
+
 
     WB  #(.WIDTH(32)) WRITEBACK
     (
-      .data_in        ( data_mem                   ),
-      .alu_res_in     ( alu_res                    ),
-      .sel_in         ( control_vector.mem_to_reg  ),
-      .data_out       ( data_to_write              )
+      .data_in        (memwb_data_mem),
+      .alu_res_in     (memwb_alu_res),
+      .sel_in         (memwb_mem_to_reg),
+      .data_out       (data_to_write)
     );
 
 endmodule

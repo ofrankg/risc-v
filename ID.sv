@@ -6,10 +6,13 @@ module ID
   )
   (
     input logic               clk_in,
+    input logic               we_in,
+    input logic [INDEX-1:0]   rd_in,
     input logic [WIDTH-1:0]   instr_in,
     input logic [WIDTH-1:0]   data_in,
-    output logic [WIDTH-1:0]  rs1_alu_out,
-    output logic [WIDTH-1:0]  rs2_alu_out,
+    output logic [INDEX-1:0]   rd_out,
+    output logic [WIDTH-1:0]  drs1_out,
+    output logic [WIDTH-1:0]  drs2_out,
     output logic [WIDTH-1:0]  signimm_out,
     output riscv_control_t    ctrl_vector_out
   );
@@ -25,7 +28,7 @@ module ID
     assign funct3 = instr_in[14:12];
     assign funct7 = instr_in[31:25];
 
-    assign rd = instr_in[11:7];
+    assign rd_out = instr_in[11:7];
     assign rs1 = instr_in[19:15];
     assign rs2 = instr_in[24:20];
 
@@ -41,13 +44,13 @@ module ID
     registerfile #(.WIDTH(32),.INDEX(5)) registerfile
     (
       .clk_in         (clk_in),
-      .we_in          (ctrl_vector_out.reg_write),
-      .address_w_in   (rd),
+      .we_in          (we_in),
+      .address_w_in   (rd_in),
       .address_ra_in  (rs1),
       .address_rb_in  (rs2),
       .data_w_in      (data_in),
-      .data_a_out     (rs1_alu_out),
-      .data_b_out     (rs2_alu_out)
+      .data_a_out     (drs1_out),
+      .data_b_out     (drs2_out)
     );
 
     signimm #(.WIDTH(32)) signimm
