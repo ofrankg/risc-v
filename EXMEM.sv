@@ -7,6 +7,7 @@ module EXMEM
   (
     input                     clk_in,
     input                     rst_in,
+    input logic               flush_in,
     input logic               zero_in,
     input logic  [WIDTH-1:0]  pc_branch_in,
     input logic  [WIDTH-1:0]  alu_res_in,
@@ -39,12 +40,22 @@ module EXMEM
         ctrl_vector <= 'b0;
       end
       else begin
-        pc_branch    <= pc_branch_in;
-        alu_res     <= alu_res_in;
-        zero        <= zero_in;
-        rd          <= rd_in;
-        drs2        <= drs2_in;
-        ctrl_vector <= ctrl_vector_in;
+        if (flush_in) begin
+          pc_branch    <= {WIDTH{1'b0}};
+          alu_res     <= {WIDTH{1'b0}};
+          zero        <= 1'b0;
+          rd          <= {INDEX{1'b0}};
+          drs2        <= {WIDTH{1'b0}};
+          ctrl_vector <= 'b0;
+        end
+        else begin
+          pc_branch    <= pc_branch_in;
+          alu_res     <= alu_res_in;
+          zero        <= zero_in;
+          rd          <= rd_in;
+          drs2        <= drs2_in;
+          ctrl_vector <= ctrl_vector_in;
+        end
       end
     end
 

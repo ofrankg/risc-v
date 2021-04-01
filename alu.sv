@@ -16,8 +16,8 @@ module alu
 			alu_add	:	rd_out = rs1_in + rs2_in;
       alu_sub	:	rd_out = rs1_in - rs2_in;
       alu_sll	:	rd_out = rs1_in << rs2_in;
-      alu_slt: rd_out = $signed(rs1_in) < $signed(rs2_in);
-      alu_sltu: rd_out = $unsigned(rs1_in) < $unsigned(rs2_in);
+      alu_slt:  rd_out = $signed(rs1_in) < $signed(rs2_in) ? 32'b1: 32'b0;
+      alu_sltu: rd_out = $unsigned(rs1_in) < $unsigned(rs2_in) ? 32'b1: 32'b0;
       alu_xor	:	rd_out = rs1_in ^ rs2_in;
       alu_srl	:	rd_out = rs1_in >> rs2_in;
       alu_sra	:	rd_out = $signed(rs1_in) >>> rs2_in;

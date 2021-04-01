@@ -28,7 +28,8 @@ module IFID
         pc <= pc_in;
         instr <= instr_in;
       end
-      else if (flush_in) begin
+      if (flush_in) begin
+        pc <= {WIDTH{1'b0}};
         instr <= {WIDTH{1'b0}};
       end
     end

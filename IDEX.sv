@@ -7,6 +7,7 @@ module IDEX
   (
     input logic              clk_in,
     input logic              rst_in,
+    input logic              flush_in,
     /* From ifid */
     input logic [WIDTH-1:0]  pc_in,
 
@@ -53,14 +54,26 @@ module IDEX
         ctrl_vector <= 11'b0;
       end
       else begin
-        pc      <= pc_in;
-        rs1     <= rs1_in;
-        rs2     <= rs2_in;
-        rd      <= rd_in;
-        drs1    <= drs1_in;
-        drs2    <= drs2_in;
-        signimm <= signimm_in;
-        ctrl_vector <= ctrl_vector_in;
+        if (flush_in) begin
+          pc      <= {WIDTH{1'b0}};
+          rs1     <= {INDEX{1'b0}};
+          rs2     <= {INDEX{1'b0}};
+          rd      <= {INDEX{1'b0}};
+          drs1 <= {WIDTH{1'b0}};
+          drs2 <= {WIDTH{1'b0}};
+          signimm <= {WIDTH{1'b0}};
+          ctrl_vector <= 11'b0;
+        end
+        else begin
+          pc      <= pc_in;
+          rs1     <= rs1_in;
+          rs2     <= rs2_in;
+          rd      <= rd_in;
+          drs1    <= drs1_in;
+          drs2    <= drs2_in;
+          signimm <= signimm_in;
+          ctrl_vector <= ctrl_vector_in;
+        end
       end
     end
 

@@ -61,6 +61,7 @@ module riscv_core
      logic [1:0]        rs2_src;
 
      logic              stall;
+     logic              flush;
 
     IF #(.WIDTH(32)) FETCH
     (
@@ -86,7 +87,7 @@ module riscv_core
       .clk_in     (master_clk),
       .rst_in     (master_nrst),
       .stall_in   (stall),
-      .flush_in   (),
+      .flush_in   (flush),
       .pc_in      (pc_current),
       .instr_in   (instruction),
       .pc_out     (ifid_pc),
@@ -114,6 +115,7 @@ module riscv_core
     (
       .clk_in           (master_clk),
       .rst_in           (master_nrst),
+      .flush_in         (flush),
       .pc_in            (ifid_pc),
       .rs1_in           (rs1),
       .rs2_in           (rs2),
@@ -154,6 +156,7 @@ module riscv_core
     (
       .clk_in          (master_clk),
       .rst_in          (master_nrst),
+      .flush_in        (flush),
       .pc_branch_in    (pc_branch),
       .alu_res_in      (alu_res),
       .zero_in         (zero),
@@ -185,6 +188,7 @@ module riscv_core
       (
         .clk_in           (master_clk),
         .rst_in           (master_nrst),
+        .flush_in         (),
         .mem_to_reg_in    (exmem_ctrl_vector.mem_to_reg),
         .reg_write_in     (exmem_ctrl_vector.reg_write),
         .rd_in            (exmem_rd),
@@ -221,10 +225,14 @@ module riscv_core
     HZD #(.WIDTH(32),.INDEX(5)) HAZARD_UNIT
     (
       .idex_mem_read_in (idex_ctrl_vector.mem_read),
+      .branch_in        (exmem_pc_src),
+      .exmem_branch_in  (exmem_pc_branch),
+      .idex_pc_in       (idex_pc),
       .idex_rd_in       (idex_rd),
       .ifid_rs1_in      (rs1),
       .ifid_rs2_in      (rs2),
-      .stall_out        (stall)
+      .stall_out        (stall),
+      .flush_out        (flush)
     );
 
 endmodule

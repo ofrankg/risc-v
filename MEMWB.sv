@@ -6,6 +6,7 @@ module MEMWB
   (
     input logic               clk_in,
     input logic               rst_in,
+    input logic               flush_in,
     input logic               mem_to_reg_in,
     input logic               reg_write_in,
     input logic [INDEX-1:0]   rd_in,
@@ -33,11 +34,20 @@ module MEMWB
         alu_res        <= {WIDTH{1'b0}};
       end
       else begin
-        mem_to_reg <= mem_to_reg_in;
-        reg_write  <= reg_write_in;
-        rd         <= rd_in;
-        data_mem   <= data_mem_in;
-        alu_res       <= alu_res_in;
+        if (flush_in) begin
+          mem_to_reg  <= 1'b0;
+          reg_write   <= 1'b0;
+          rd          <= {INDEX{1'b0}};
+          data_mem    <= {WIDTH{1'b0}};
+          alu_res        <= {WIDTH{1'b0}};
+        end
+        else begin
+          mem_to_reg <= mem_to_reg_in;
+          reg_write  <= reg_write_in;
+          rd         <= rd_in;
+          data_mem   <= data_mem_in;
+          alu_res       <= alu_res_in;
+        end
       end
     end
 
