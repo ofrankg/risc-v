@@ -25,9 +25,13 @@ module riscv_core
      logic [WIDTH-1:0]	ifid_pc;
      logic [WIDTH-1:0]	ifid_instr;
 
+     logic [INDEX-1:0]  rs1;
+     logic [INDEX-1:0]  rs2;
      logic [INDEX-1:0]  rd;
 
      logic [WIDTH-1:0]  idex_pc;
+     logic [INDEX-1:0]  idex_rs1;
+     logic [INDEX-1:0]  idex_rs2;
 	   logic [WIDTH-1:0]  idex_drs1;
      logic [WIDTH-1:0]  idex_drs2;
      logic [WIDTH-1:0]  idex_signimm;
@@ -35,6 +39,7 @@ module riscv_core
      logic [INDEX-1:0]  idex_rd;
 
      logic [WIDTH-1:0]  pc_branch;
+     logic [WIDTH-1:0]  ex_drs2;
      logic              zero;
 
      logic              exmem_pc_src;
@@ -52,10 +57,16 @@ module riscv_core
      logic [WIDTH-1:0]  memwb_data_mem;
      logic [WIDTH-1:0]  memwb_alu_res;
 
+     logic [1:0]        rs1_src;
+     logic [1:0]        rs2_src;
+
+     logic              stall;
+
     IF #(.WIDTH(32)) FETCH
     (
       .clk_in         (master_clk),
       .rst_in         (master_nrst),
+      .stall_in       (stall),
       .pc_src_in      (exmem_pc_src),
       .pc_branch_in   (exmem_pc_branch),
       .pc_current_out (pc_current)
@@ -73,8 +84,9 @@ module riscv_core
     IFID #(.WIDTH(32)) IFID
     (
       .clk_in     (master_clk),
-      .flush_in   (),
       .rst_in     (master_nrst),
+      .stall_in   (stall),
+      .flush_in   (),
       .pc_in      (pc_current),
       .instr_in   (instruction),
       .pc_out     (ifid_pc),
@@ -84,10 +96,13 @@ module riscv_core
     ID #(.WIDTH(32),.INDEX(5)) DECODE
     (
       .clk_in           (master_clk),
+      .stall_in         (stall),
       .we_in            (memwb_reg_write),
       .rd_in            (memwb_rd),
       .instr_in         (ifid_instr),
       .data_in          (data_to_write),
+      .rs1_out          (rs1),
+      .rs2_out          (rs2),
       .rd_out           (rd),
       .drs1_out         (drs1),
       .drs2_out         (drs2),
@@ -100,16 +115,16 @@ module riscv_core
       .clk_in           (master_clk),
       .rst_in           (master_nrst),
       .pc_in            (ifid_pc),
-      .rs1_in           (),
-      .rs2_in           (),
+      .rs1_in           (rs1),
+      .rs2_in           (rs2),
       .rd_in            (rd),
       .drs1_in          (drs1),
       .drs2_in          (drs2),
       .signimm_in       (signimm),
       .ctrl_vector_in   (ctrl_vector),
       .pc_out           (idex_pc),
-      .rs1_out          (),
-      .rs2_out          (),
+      .rs1_out          (idex_rs1),
+      .rs2_out          (idex_rs2),
       .rd_out           (idex_rd),
       .drs1_out         (idex_drs1),
       .drs2_out         (idex_drs2),
@@ -120,14 +135,19 @@ module riscv_core
 
     EX #(.WIDTH(32),.INDEX(5)) EXECUTION
     (
-      .pc_in          (idex_pc),
-      .rs1_in         (idex_drs1),
-      .rs2_in         (idex_drs2),
-      .signimm_in     (idex_signimm),
-      .ctrl_vector_in (idex_ctrl_vector),
-      .zero_out       (zero),
-      .pc_branch_out  (pc_branch),
-      .alu_res_out    (alu_res)
+      .rs1_src_in           (rs1_src),
+      .rs2_src_in           (rs2_src),
+      .pc_in                (idex_pc),
+      .rs1_in               (idex_drs1),
+      .rs2_in               (idex_drs2),
+      .signimm_in           (idex_signimm),
+      .wb_data_to_write_in  (data_to_write),
+      .exmem_alu_res_in     (exmem_alu_res),
+      .ctrl_vector_in       (idex_ctrl_vector),
+      .zero_out             (zero),
+      .pc_branch_out        (pc_branch),
+      .drs2_fw_out          (ex_drs2),
+      .alu_res_out          (alu_res)
     );
 
     EXMEM #(.WIDTH(32),.INDEX(5)) EXMEM
@@ -138,7 +158,7 @@ module riscv_core
       .alu_res_in      (alu_res),
       .zero_in         (zero),
       .rd_in           (idex_rd),
-      .drs2_in         (idex_drs2),
+      .drs2_in         (ex_drs2),
       .ctrl_vector_in  (idex_ctrl_vector),
       .pc_branch_out   (exmem_pc_branch),
       .alu_res_out     (exmem_alu_res),
@@ -184,6 +204,27 @@ module riscv_core
       .alu_res_in     (memwb_alu_res),
       .sel_in         (memwb_mem_to_reg),
       .data_out       (data_to_write)
+    );
+
+    FW  #(.WIDTH(32),.INDEX(5)) FORWARD_UNIT
+    (
+      .exmem_reg_write_in (exmem_ctrl_vector.reg_write),
+      .memwb_reg_write_in (memwb_reg_write),
+      .idex_rs1_in        (idex_rs1),
+      .idex_rs2_in        (idex_rs2),
+      .exmem_rd_in        (exmem_rd),
+      .memwb_rd_in        (memwb_rd),
+      .rs1_src_out        (rs1_src),
+      .rs2_src_out        (rs2_src)
+    );
+
+    HZD #(.WIDTH(32),.INDEX(5)) HAZARD_UNIT
+    (
+      .idex_mem_read_in (idex_ctrl_vector.mem_read),
+      .idex_rd_in       (idex_rd),
+      .ifid_rs1_in      (rs1),
+      .ifid_rs2_in      (rs2),
+      .stall_out        (stall)
     );
 
 endmodule

@@ -9,12 +9,12 @@ module WB
     output logic [WIDTH-1:0] data_out
   );
 
-  mux #(.WIDTH(32)) muxWB
+  mux2 #(.WIDTH(32)) muxWB
   (
-      .sel_in ( sel_in ),
-      .a_in   ( data_in                   ),
-      .b_in   ( alu_res_in                ),
-      .c_out  ( data_out                  )
+      .sel_in (sel_in),
+      .a_in   (alu_res_in),
+      .b_in   (data_in),
+      .z_out  (data_out)
     );
 
 endmodule // WB

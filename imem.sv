@@ -13,7 +13,7 @@ module imem
   logic [WIDTH-1:0] mem [0:2**INDEX-1];
 
   initial begin
-    $readmemh("bubble.hex",mem);
+    $readmemh("HZD_tst.hex",mem);
   end
 
   assign data_out = mem [address_in];

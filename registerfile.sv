@@ -29,8 +29,13 @@ module registerfile
       end
     end
 
-  // Lecturas asincronas de la memoria para ambos datos
-  assign data_a_out = regFile[address_ra_in];
-  assign data_b_out = regFile[address_rb_in];
+  // Lecturas sincronas de la memoria para ambos datos
+  // always_ff @ ( posedge clk_in )
+  //   begin
+  //     data_a_out = regFile[address_ra_in];
+  //     data_b_out = regFile[address_rb_in];
+  //   end
+  assign data_a_out = (we_in & (address_ra_in == address_w_in)) ? data_w_in : regFile[address_ra_in];
+  assign data_b_out = (we_in & (address_rb_in == address_w_in)) ? data_w_in : regFile[address_rb_in];
 
 endmodule

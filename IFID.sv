@@ -4,8 +4,9 @@ module IFID
   )
   (
     input logic               clk_in,
-    input logic               flush_in,
     input logic               rst_in,
+    input logic               stall_in,
+    input logic               flush_in,
     /* From fetch */
     input logic  [WIDTH-1:0]  pc_in,
     input logic  [WIDTH-1:0]  instr_in,
@@ -23,8 +24,13 @@ module IFID
       instr <= {WIDTH{1'b0}};
     end
     else begin
-      pc <= pc_in;
-      instr <= instr_in;
+      if (!stall_in) begin
+        pc <= pc_in;
+        instr <= instr_in;
+      end
+      else if (flush_in) begin
+        instr <= {WIDTH{1'b0}};
+      end
     end
   end
 
