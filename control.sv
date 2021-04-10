@@ -11,6 +11,7 @@ module control
     case (opcode_in)
       op_br     : begin
         control_out.mem_read    = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_write   = 1'b0;
         control_out.mem_to_reg  = 1'b0;
         control_out.reg_write   = 1'b0;
@@ -27,9 +28,21 @@ module control
           end
         endcase
       end
+      op_jump    : begin
+        control_out.branch      = 1'b0;
+        control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b1;
+        control_out.mem_read    = 1'b0;
+        control_out.mem_write   = 1'b0;
+        control_out.mem_to_reg  = 1'b0;
+        control_out.reg_write   = 1'b0;
+        control_out.alu_src     = 1'b1;
+        control_out.alu_op      = alu_add;
+      end
       op_load   : begin
         control_out.branch      = 1'b0;
         control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_read    = 1'b1;
         control_out.mem_write   = 1'b0;
         control_out.mem_to_reg  = 1'b1;
@@ -40,6 +53,7 @@ module control
       op_store  : begin
         control_out.branch      = 1'b0;
         control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_read    = 1'b0;
         control_out.mem_write   = 1'b1;
         control_out.mem_to_reg  = 1'b0;
@@ -50,6 +64,7 @@ module control
       op_imm    : begin
         control_out.branch      = 1'b0;
         control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_read    = 1'b0;
         control_out.mem_write   = 1'b0;
         control_out.mem_to_reg  = 1'b0;
@@ -73,6 +88,7 @@ module control
       op_reg    : begin
         control_out.branch      = 1'b0;
         control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_read    = 1'b0;
         control_out.mem_write   = 1'b0;
         control_out.mem_to_reg  = 1'b0;
@@ -117,6 +133,7 @@ module control
       default   : begin
         control_out.branch      = 1'b0;
         control_out.branch_neq  = 1'b0;
+        control_out.jump        = 1'b0;
         control_out.mem_read    = 1'b0;
         control_out.mem_write   = 1'b0;
         control_out.mem_to_reg  = 1'b0;

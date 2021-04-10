@@ -9,12 +9,14 @@ module EXMEM
     input                     rst_in,
     input logic               flush_in,
     input logic               zero_in,
+    input logic  [WIDTH-1:0]  pc_in,
     input logic  [WIDTH-1:0]  pc_branch_in,
     input logic  [WIDTH-1:0]  alu_res_in,
     input logic  [INDEX-1:0]  rd_in,
     input logic  [WIDTH-1:0]  drs2_in,
     input riscv_control_t     ctrl_vector_in,
     output logic              zero_out,
+    output logic  [WIDTH-1:0] pc_out,
     output logic  [WIDTH-1:0] pc_branch_out,
     output logic  [WIDTH-1:0] alu_res_out,
     output logic  [INDEX-1:0] rd_out,
@@ -22,6 +24,7 @@ module EXMEM
     output riscv_control_t    ctrl_vector_out
   );
 
+    logic  [WIDTH-1:0]  pc;
     logic  [WIDTH-1:0]  pc_branch;
     logic  [WIDTH-1:0]  alu_res;
     logic    				zero;
@@ -32,7 +35,8 @@ module EXMEM
 
     always_ff @ (posedge clk_in, negedge rst_in) begin
       if (!rst_in) begin
-        pc_branch    <= {WIDTH{1'b0}};
+        pc          <= {WIDTH{1'b0}};
+        pc_branch   <= {WIDTH{1'b0}};
         alu_res     <= {WIDTH{1'b0}};
         zero        <= 1'b0;
         rd          <= {INDEX{1'b0}};
@@ -41,6 +45,7 @@ module EXMEM
       end
       else begin
         if (flush_in) begin
+          pc          <= {WIDTH{1'b0}};
           pc_branch    <= {WIDTH{1'b0}};
           alu_res     <= {WIDTH{1'b0}};
           zero        <= 1'b0;
@@ -49,6 +54,7 @@ module EXMEM
           ctrl_vector <= 'b0;
         end
         else begin
+          pc          <= pc_in;
           pc_branch    <= pc_branch_in;
           alu_res     <= alu_res_in;
           zero        <= zero_in;
@@ -60,6 +66,7 @@ module EXMEM
     end
 
     always_ff @ (negedge clk_in) begin
+      pc_out          <= pc;
       pc_branch_out   <= pc_branch;
       alu_res_out     <= alu_res;
       zero_out        <= zero;

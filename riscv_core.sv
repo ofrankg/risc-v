@@ -44,6 +44,7 @@ module riscv_core
 
      logic              exmem_pc_src;
      logic              exmem_zero;
+     logic [WIDTH-1:0]  exmem_pc;
      logic [WIDTH-1:0]  exmem_pc_branch;
      logic [WIDTH-1:0]  exmem_alu_res;
      logic [INDEX-1:0]  exmem_rd;
@@ -62,15 +63,40 @@ module riscv_core
 
      logic              stall;
      logic              flush;
+     logic              exmem_prediction;
+     logic              prediction;
+     logic [WIDTH-1:0]  pc_restore;
+     logic [WIDTH-1:0]  fetch_pc_prediction;
+     logic [1:0]        exmem_confidence;
+
+
+     BPU #(.PC(32),.TAG(22)) BPU
+     (
+       .clk_in                (master_clk),
+       .nrst_in               (master_nrst),
+       .exmem_jmp_br_in       (exmem_ctrl_vector.branch|exmem_ctrl_vector.branch_neq|exmem_ctrl_vector.jump),
+       .exmem_pc_src_in       (exmem_pc_src),
+       .fetch_pc_in           (pc_current),
+       .exmem_pc_in           (exmem_pc),
+       .exmem_pc_branch_in    (exmem_pc_branch),
+       .fetch_prediction_out  (prediction),
+       .exmem_confidence_out  (exmem_confidence),
+       .pc_prediction_out     (fetch_pc_prediction),
+       .pc_restore_out        (pc_restore)
+     );
+
 
     IF #(.WIDTH(32)) FETCH
     (
-      .clk_in         (master_clk),
-      .rst_in         (master_nrst),
-      .stall_in       (stall),
-      .pc_src_in      (exmem_pc_src),
-      .pc_branch_in   (exmem_pc_branch),
-      .pc_current_out (pc_current)
+      .clk_in             (master_clk),
+      .rst_in             (master_nrst),
+      .stall_in           (stall),
+      .pc_src_in          (),
+      .prediction_in      (prediction),
+      .flush_in           (flush),
+      .pc_prediction_in   (fetch_pc_prediction),
+      .pc_branch_in       (pc_restore),
+      .pc_current_out     (pc_current)
     );
 
     imem #(.WIDTH(32),.INDEX(6)) ICACHE
@@ -157,12 +183,14 @@ module riscv_core
       .clk_in          (master_clk),
       .rst_in          (master_nrst),
       .flush_in        (flush),
+      .pc_in           (idex_pc),
       .pc_branch_in    (pc_branch),
       .alu_res_in      (alu_res),
       .zero_in         (zero),
       .rd_in           (idex_rd),
       .drs2_in         (ex_drs2),
       .ctrl_vector_in  (idex_ctrl_vector),
+      .pc_out          (exmem_pc),
       .pc_branch_out   (exmem_pc_branch),
       .alu_res_out     (exmem_alu_res),
       .zero_out        (exmem_zero),
@@ -226,6 +254,7 @@ module riscv_core
     (
       .idex_mem_read_in (idex_ctrl_vector.mem_read),
       .branch_in        (exmem_pc_src),
+      .prediction_in    (exmem_confidence[1]),
       .exmem_branch_in  (exmem_pc_branch),
       .idex_pc_in       (idex_pc),
       .idex_rd_in       (idex_rd),

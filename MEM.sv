@@ -23,6 +23,7 @@ module MEM
     .zero_in    (zero_in),
     .beq_in     (ctrl_vector_in.branch),
     .bneq_in    (ctrl_vector_in.branch_neq),
+    .jump_in    (ctrl_vector_in.jump),
     .branch_out (pc_src_out)
   );
 

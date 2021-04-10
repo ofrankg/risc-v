@@ -8,6 +8,6 @@ module pcbranch
     output logic  [WIDTH-1:0] pc_out
   );
 
-  assign pc_out = pc_in + {signimm_in[30:0],1'b0};
+  assign pc_out = pc_in + signimm_in;
 
 endmodule // pcbranch

@@ -5,7 +5,8 @@ typedef enum bit [6:0] {
     op_load  = 7'b0000011, // loads (I type)
     op_store = 7'b0100011, // stores (S type)
     op_imm   = 7'b0010011, // immediate operations (I type)
-    op_reg   = 7'b0110011 // register operations (R type)
+    op_reg   = 7'b0110011, // register operations (R type)
+    op_jump  = 7'b1101111  // jump (SB type)
 } riscvi_opcode_t;
 
 typedef enum bit [2:0] {
@@ -41,6 +42,7 @@ typedef enum bit [3:0] {
 typedef struct packed {
   logic       branch;
   logic       branch_neq;
+  logic       jump;
   logic       mem_read;
   logic       mem_write;
   logic       mem_to_reg;

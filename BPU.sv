@@ -5,69 +5,76 @@ module BPU
   )
   (
     input logic           clk_in,
-    input logic           write_pc_in,
+    input logic           nrst_in,
+    input logic           exmem_jmp_br_in,
+    input logic           exmem_pc_src_in,
     input logic [PC-1:0]  fetch_pc_in,
-    input logic [PC-1:0]  decode_pc_in,
-    input logic [PC-1:0]  exe_pc_in,
-    input logic [PC-1:0]  exe_new_pc_in,
-    output logic          prediction_out
+    input logic [PC-1:0]  exmem_pc_in,
+    input logic [PC-1:0]  exmem_pc_branch_in,
+    output logic          fetch_prediction_out,
+    output logic [1:0]    exmem_confidence_out,
+    output logic [PC-1:0] pc_prediction_out,
+    output logic [PC-1:0] pc_restore_out
   );
 
-  logic [PC-TAG-1:0] fetch_index;
-  logic [PC-TAG-1:0] decode_index;
-  logic [PC-TAG-1:0] exe_index;
-
-  logic [TAG-1:0] fetch_tag;
-  logic [TAG-1:0] decode_tag;
-  logic [TAG-1:0] new_tag;
-
-  logic [PC-1:0]  pc_btb;
-
-  logic hit;
-  logic update;
+  logic [PC-TAG-1:0]  fetch_index;
+  logic [PC-TAG-1:0]  exmem_index;
+  logic [TAG-1:0]     fetch_tag;
+  logic [TAG-1:0]     exmem_tag;
+  logic [1:0]         confidence;
+  logic [1:0]         new_confidence;
+  logic               fetch_hit;
 
   assign fetch_index = fetch_pc_in[PC-TAG-1:0];
-  assign decode_index = decode_pc_in[PC-TAG-1:0];
-  assign exe_index = exe_pc_in[PC-TAG-1:0];
+  assign exmem_index = exmem_pc_in[PC-TAG-1:0];
 
   assign fetch_tag = fetch_pc_in[PC-1:PC-TAG];
-  assign decode_tag = decode_pc_in[PC-1:PC-TAG];
-  assign new_tag = exe_new_pc_in[PC-1:PC-TAG];
+  assign exmem_tag = exmem_pc_in[PC-1:PC-TAG];
 
-  assign write = write_pc_in & !hit;
+  assign fetch_prediction_out = fetch_hit ? confidence[1] : 1'b0;
 
-  bht #(.TAG(27),.PC(32)) BHT
+  assign pc_restore_out = exmem_pc_src_in ? exmem_pc_branch_in : (exmem_pc_in + 32'h4);
+
+  bht #(.TAG(TAG),.PC(PC)) BHT
   (
-    .clk_in        (clk_in),
-    .write_in      (write),
-    .index_in      (fetch_index),
-    .tag_in        (fetch_tag),
-    .new_index_in  (decode_index),
-    .new_tag_in    (decode_tag),
-    .hit_out       (hit)
+    .clk_in         (clk_in),
+    .update_in      (exmem_jmp_br_in),
+    .fetch_index_in (fetch_index),
+    .exmem_index_in (exmem_index),
+    .fetch_tag_in   (fetch_tag),
+    .exmem_tag_in   (exmem_tag),
+    .fetch_hit_out  (fetch_hit)
   );
 
-  // pht #(.TAG(27),.PC(32),.COUNT(2) PHT
-  // (
-  //   .clk_in         (),
-  //   .update_in      (),
-  //   .index_in       (),
-  //   .pattern_in     (),
-  //   .new_index_in   (),
-  //   .new_pattern_in (),
-  //   .prediction_out ()
-  // );
-  //
-
-  assign update = (pc_btb == exe_new_pc_in) ? 1'b0 : 1'b1;
-
-  btb #(.TAG(27),.PC(32)) BTB
+  btb #(.TAG(TAG),.PC(PC)) BTB
   (
-    .clk_in       (clk_in),
-    .update_in    (update),
-    .index_in     (exe_index),
-    .new_pc_in    (exe_new_pc_in),
-    .pc_out       (pc_btb)
+    .clk_in         (clk_in),
+    .update_in      (exmem_jmp_br_in),
+    .fetch_index_in (fetch_index),
+    .exmem_index_in (exmem_index),
+    .new_pc_in      (exmem_pc_branch_in),
+    .fetch_pc_out   (pc_prediction_out),
+    .exmem_pc_out   ()
+  );
+
+  pht #(.TAG(TAG),.PC(PC),.COUNT(2)) PHT
+  (
+    .clk_in                 (clk_in),
+    .update_in              (exmem_jmp_br_in),
+    .fetch_index_in         (fetch_index),
+    .new_confidence_in      (new_confidence),
+    .exmem_index_in         (exmem_index),
+    .fetch_confidence_out   (confidence),
+    .exmem_confidence_out   (exmem_confidence_out)
+  );
+
+  fsm FSM
+  (
+  	.clk_in          (clk_in),
+  	.nrst_in         (nrst_in),
+  	.feedback_in     (exmem_pc_src_in),
+    .confidence_in   (exmem_confidence_out),
+  	.confidence_out  (new_confidence)
   );
 
 endmodule // BPU
